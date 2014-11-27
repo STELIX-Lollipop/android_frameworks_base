@@ -3427,6 +3427,12 @@ public final class Settings {
         */
        public static final String NETWORK_TRAFFIC_AUTOHIDE_THRESHOLD = "network_traffic_autohide_threshold";
 
+         /**
+         * Recents Show/Hide Search Bar
+         * @hide
+         */
+        public static final String RECENTS_SHOW_HIDE_SEARCH_BAR = "recents_show_hide_search_bar";
+
         /**
          * Whether to enable voice wakeup.  The value is boolean (1 or 0).
          * @hide
