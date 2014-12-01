@@ -3216,6 +3216,11 @@ public final class Settings {
          */
         public static final String VOLUME_KEYS_CONTROL_MEDIA_STREAM = "volume_keys_control_media_stream";
 
+        /**
+         * Boolean value on whether to show weather in the statusbar
+         */
+        public static final String STATUS_BAR_SHOW_WEATHER = "status_bar_show_weather";
+
        /**
         * Network traffic indicator, goes from least to greatest significant bitwise
         * 0 = Display up-stream traffic if set
