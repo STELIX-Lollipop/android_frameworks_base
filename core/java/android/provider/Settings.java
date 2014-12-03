@@ -2226,6 +2226,13 @@ public final class Settings {
          */
         public static final String QS_USE_MAIN_TILES = "sysui_qs_main_tiles";
 
+        /**
+         * Quick Settings Smart Pulldown
+         *
+         * @hide
+         */
+        public static final String QS_SMART_PULLDOWN = "qs_smart_pulldown";
+
         /** Whether to show the brightness slider in quick settings panel.
          *
          * @hide
