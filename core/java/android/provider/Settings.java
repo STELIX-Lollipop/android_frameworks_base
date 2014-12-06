@@ -2184,6 +2184,13 @@ public final class Settings {
         public static final String VOLUME_MASTER_MUTE = "volume_master_mute";
 
         /**
+         * Whether to wake the screen with the volume keys, the value is boolean.
+         *
+         * @hide
+         */
+        public static final String VOLUME_WAKE_SCREEN = "volume_wake_screen";
+
+        /**
          * Microphone mute (int 1 = mute, 0 = not muted).
          *
          * @hide
@@ -2527,6 +2534,12 @@ public final class Settings {
          * @hide
          */
         public static final String USE_EDGE_SERVICE_FOR_GESTURES = "edge_service_for_gestures";
+
+        /**
+         * Show the pending notification counts as overlays on the status bar
+         * @hide
+         */
+        public static final String STATUS_BAR_NOTIF_COUNT = "status_bar_notif_count";
 
         /**
          * Control whether the accelerometer will be used to change screen
