@@ -592,10 +592,6 @@ public class NetworkControllerImpl extends BroadcastReceiver
                  action.equals(ConnectivityManager.INET_CONDITION_ACTION)) {
             updateConnectivity(intent);
             refreshViews();
-        } else if (action.equals(ConnectivityManager.CONNECTIVITY_ACTION) ||
-                 action.equals(ConnectivityManager.INET_CONDITION_ACTION)) {
-            updateConnectivity(intent);
-            refreshViews();
         } else if (action.equals(Intent.ACTION_BOOT_COMPLETED)) {
             Handler handler = new Handler();
             handler.postDelayed(new Runnable() {
