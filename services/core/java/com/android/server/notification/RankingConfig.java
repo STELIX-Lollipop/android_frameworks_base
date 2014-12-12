@@ -23,4 +23,9 @@ public interface RankingConfig {
     int getPackageVisibilityOverride(String packageName, int uid);
 
     void setPackageVisibilityOverride(String packageName, int uid, int visibility);
+
+    void setHeadsUpNotificationsEnabledForPackage(String packageName, int uid, int headsUp);
+
+    int getHeadsUpNotificationsEnabledForPackage(String packageName, int uid);
+
 }

@@ -52,6 +52,7 @@ public class RankingHelper implements RankingConfig {
     private static final String ATT_UID = "uid";
     private static final String ATT_PRIORITY = "priority";
     private static final String ATT_VISIBILITY = "visibility";
+    private static final String ATT_HEADSUP = "headsup";
 
     private final NotificationSignalExtractor[] mSignalExtractors;
     private final NotificationComparator mPreliminaryComparator = new NotificationComparator();
@@ -60,6 +61,7 @@ public class RankingHelper implements RankingConfig {
     // Package name to uid, to priority. Would be better as Table<String, Int, Int>
     private final ArrayMap<String, SparseIntArray> mPackagePriorities;
     private final ArrayMap<String, SparseIntArray> mPackageVisibilities;
+    private final ArrayMap<String, SparseIntArray> mPackageHeadsUp;
     private final ArrayMap<String, NotificationRecord> mProxyByGroupTmp;
 
     private final Context mContext;
@@ -70,6 +72,7 @@ public class RankingHelper implements RankingConfig {
         mRankingHandler = rankingHandler;
         mPackagePriorities = new ArrayMap<String, SparseIntArray>();
         mPackageVisibilities = new ArrayMap<String, SparseIntArray>();
+        mPackageHeadsUp = new ArrayMap<String, SparseIntArray>();
 
         final int N = extractorNames.length;
         mSignalExtractors = new NotificationSignalExtractor[N];
@@ -139,6 +142,7 @@ public class RankingHelper implements RankingConfig {
                     int priority = safeInt(parser, ATT_PRIORITY, Notification.PRIORITY_DEFAULT);
                     int vis = safeInt(parser, ATT_VISIBILITY,
                             NotificationListenerService.Ranking.VISIBILITY_NO_OVERRIDE);
+                    int headsUp = safeInt(parser, ATT_HEADSUP, Notification.HEADS_UP_NEVER);
                     String name = parser.getAttributeValue(null, ATT_NAME);
 
                     if (!TextUtils.isEmpty(name)) {
@@ -158,6 +162,14 @@ public class RankingHelper implements RankingConfig {
                             }
                             visibilityByUid.put(uid, vis);
                         }
+                        if (headsUp != Notification.HEADS_UP_NEVER) {
+                            SparseIntArray headsUpByUid = mPackageHeadsUp.get(name);
+                            if (headsUpByUid == null) {
+                                headsUpByUid = new SparseIntArray();
+                                mPackageHeadsUp.put(name, headsUpByUid);
+                            }
+                            headsUpByUid.put(uid, headsUp);
+                        }
                     }
                 }
             }
@@ -173,11 +185,13 @@ public class RankingHelper implements RankingConfig {
                 + mPackageVisibilities.size());
         packageNames.addAll(mPackagePriorities.keySet());
         packageNames.addAll(mPackageVisibilities.keySet());
+        packageNames.addAll(mPackageHeadsUp.keySet());
         final Set<Integer> packageUids = new ArraySet<>();
         for (String packageName : packageNames) {
             packageUids.clear();
             SparseIntArray priorityByUid = mPackagePriorities.get(packageName);
             SparseIntArray visibilityByUid = mPackageVisibilities.get(packageName);
+            SparseIntArray headsUpByUid = mPackageHeadsUp.get(packageName);
             if (priorityByUid != null) {
                 final int M = priorityByUid.size();
                 for (int j = 0; j < M; j++) {
@@ -188,6 +202,12 @@ public class RankingHelper implements RankingConfig {
                 final int M = visibilityByUid.size();
                 for (int j = 0; j < M; j++) {
                     packageUids.add(visibilityByUid.keyAt(j));
+                }
+            }
+            if (headsUpByUid != null) {
+                final int M = headsUpByUid.size();
+                for (int j = 0; j < M; j++) {
+                    packageUids.add(headsUpByUid.keyAt(j));
                 }
             }
             for (Integer uid : packageUids) {
@@ -203,6 +223,12 @@ public class RankingHelper implements RankingConfig {
                     final int visibility = visibilityByUid.get(uid);
                     if (visibility != NotificationListenerService.Ranking.VISIBILITY_NO_OVERRIDE) {
                         out.attribute(null, ATT_VISIBILITY, Integer.toString(visibility));
+                    }
+                }
+                if (headsUpByUid != null) {
+                    final int headsUp = headsUpByUid.get(uid);
+                    if (headsUp != Notification.HEADS_UP_NEVER) {
+                        out.attribute(null, ATT_HEADSUP, Integer.toString(headsUp));
                     }
                 }
                 out.attribute(null, ATT_UID, Integer.toString(uid));
@@ -357,6 +383,31 @@ public class RankingHelper implements RankingConfig {
             mPackageVisibilities.put(packageName, visibilityByUid);
         }
         visibilityByUid.put(uid, visibility);
+        updateConfig();
+    }
+
+    @Override
+    public int getHeadsUpNotificationsEnabledForPackage(String packageName, int uid) {
+        int headsUp = Notification.HEADS_UP_NEVER;
+        SparseIntArray headsUpByUid = mPackageHeadsUp.get(packageName);
+        if (headsUpByUid != null) {
+            headsUp = headsUpByUid.get(uid, Notification.HEADS_UP_NEVER);
+        }
+        return headsUp;
+    }
+
+    @Override
+    public void setHeadsUpNotificationsEnabledForPackage(
+                String packageName, int uid, int headsUp) {
+        if (headsUp == getHeadsUpNotificationsEnabledForPackage(packageName, uid)) {
+            return;
+        }
+        SparseIntArray headsUpByUid = mPackageHeadsUp.get(packageName);
+        if (headsUpByUid == null) {
+            headsUpByUid = new SparseIntArray();
+            mPackageHeadsUp.put(packageName, headsUpByUid);
+        }
+        headsUpByUid.put(uid, headsUp);
         updateConfig();
     }
 
