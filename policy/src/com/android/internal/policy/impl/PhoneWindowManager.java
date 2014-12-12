@@ -16,9 +16,7 @@
 package com.android.internal.policy.impl;
 
 import android.app.ActivityManager;
-import android.app.ActivityManager.RunningAppProcessInfo;
 import android.app.ActivityManagerNative;
-import android.app.IActivityManager;
 import android.app.AppOpsManager;
 import android.app.IUiModeManager;
 import android.app.ProgressDialog;
@@ -59,7 +57,6 @@ import android.os.Looper;
 import android.os.Message;
 import android.os.Messenger;
 import android.os.PowerManager;
-import android.os.Process;
 import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.os.SystemClock;
@@ -75,6 +72,10 @@ import android.service.dreams.IDreamManager;
 import android.speech.RecognizerIntent;
 import android.telecom.TelecomManager;
 import android.service.gesture.EdgeGestureManager;
+import com.android.internal.os.DeviceKeyHandler;
+
+import com.android.internal.util.cm.ActionUtils;
+import dalvik.system.DexClassLoader;
 import android.util.DisplayMetrics;
 import android.util.EventLog;
 import android.util.Log;
@@ -109,7 +110,6 @@ import android.view.animation.AnimationUtils;
 import android.widget.Toast;
 
 import com.android.internal.R;
-import com.android.internal.os.DeviceKeyHandler;
 import com.android.internal.policy.IKeyguardService;
 import com.android.internal.policy.IKeyguardServiceConstants;
 import com.android.internal.policy.PolicyManager;
@@ -121,14 +121,11 @@ import com.android.internal.util.gesture.EdgeServiceConstants;
 import com.android.internal.widget.PointerLocationView;
 import com.android.server.LocalServices;
 
-import dalvik.system.DexClassLoader;
-
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.HashSet;
-import java.util.List;
 import java.lang.reflect.Constructor;
 
 import static android.view.WindowManager.LayoutParams.*;
@@ -200,6 +197,7 @@ public class PhoneWindowManager implements WindowManagerPolicy {
     private static final int KEY_ACTION_IN_APP_SEARCH = 5;
     private static final int KEY_ACTION_LAUNCH_CAMERA = 6;
     private static final int KEY_ACTION_SLEEP = 7;
+    private static final int KEY_ACTION_LAST_APP = 8;
 
     // Masks for checking presence of hardware keys.
     // Must match values in core/res/res/values/config.xml
@@ -615,6 +613,7 @@ public class PhoneWindowManager implements WindowManagerPolicy {
     private static final int MSG_DISPATCH_VOLKEY_WITH_WAKE_LOCK = 13;
     boolean mWifiDisplayConnected = false;
     int     mWifiDisplayCustomRotation = -1;
+    private boolean mHasPermanentMenuKey;
 
     private class PolicyHandler extends Handler {
         @Override
@@ -1117,44 +1116,9 @@ public class PhoneWindowManager implements WindowManagerPolicy {
 
     Runnable mBackLongPress = new Runnable() {
         public void run() {
-            try {
-                final Intent intent = new Intent(Intent.ACTION_MAIN);
-                String defaultHomePackage = "com.android.launcher";
-                intent.addCategory(Intent.CATEGORY_HOME);
-                final ResolveInfo res = mContext.getPackageManager().resolveActivity(intent, 0);
-                if (res.activityInfo != null && !res.activityInfo.packageName.equals("android")) {
-                    defaultHomePackage = res.activityInfo.packageName;
-                }
-                boolean targetKilled = false;
-                IActivityManager am = ActivityManagerNative.getDefault();
-                List<RunningAppProcessInfo> apps = am.getRunningAppProcesses();
-                for (RunningAppProcessInfo appInfo : apps) {
-                    int uid = appInfo.uid;
-                    // Make sure it's a foreground user application (not system,
-                    // root, phone, etc.)
-                    if (uid >= Process.FIRST_APPLICATION_UID && uid <= Process.LAST_APPLICATION_UID
-                            && appInfo.importance == RunningAppProcessInfo.IMPORTANCE_FOREGROUND) {
-                        if (appInfo.pkgList != null && (appInfo.pkgList.length > 0)) {
-                            for (String pkg : appInfo.pkgList) {
-                                if (!pkg.equals("com.android.systemui") && !pkg.equals(defaultHomePackage)) {
-                                    am.forceStopPackage(pkg, UserHandle.USER_CURRENT);
-                                    targetKilled = true;
-                                    break;
-                                }
-                            }
-                        } else {
-                            Process.killProcess(appInfo.pid);
-                            targetKilled = true;
-                        }
-                    }
-                    if (targetKilled) {
-                        performHapticFeedbackLw(null, HapticFeedbackConstants.LONG_PRESS, false);
-                        Toast.makeText(mContext, R.string.app_killed_message, Toast.LENGTH_SHORT).show();
-                        break;
-                    }
-                }
-            } catch (RemoteException remoteException) {
-                // Do nothing; just let it go.
+            if (ActionUtils.killForegroundApp(mContext, mCurrentUserId)) {
+                performHapticFeedbackLw(null, HapticFeedbackConstants.LONG_PRESS, false);
+                Toast.makeText(mContext, R.string.app_killed_message, Toast.LENGTH_SHORT).show();
             }
         }
     };
@@ -1227,6 +1191,9 @@ public class PhoneWindowManager implements WindowManagerPolicy {
                 break;
             case KEY_ACTION_SLEEP:
                 mPowerManager.goToSleep(SystemClock.uptimeMillis());
+                break;
+            case KEY_ACTION_LAST_APP:
+                ActionUtils.switchToLastApp(mContext, mCurrentUserId);
                 break;
             default:
                 break;
@@ -1473,6 +1440,8 @@ public class PhoneWindowManager implements WindowManagerPolicy {
             mDoubleTapOnHomeBehavior = KEY_ACTION_NOTHING;
         }
 
+        boolean hasPermanentMenu = false;
+
         // Check for custom assignments and whether KEY_ACTION_MENU is assigned.
         if (hasHome) {
             mLongPressOnHomeBehavior = Settings.System.getIntForUser(resolver,
@@ -1481,6 +1450,9 @@ public class PhoneWindowManager implements WindowManagerPolicy {
             mDoubleTapOnHomeBehavior = Settings.System.getIntForUser(resolver,
                     Settings.System.KEY_HOME_DOUBLE_TAP_ACTION,
                     mDoubleTapOnHomeBehavior, UserHandle.USER_CURRENT);
+
+            hasPermanentMenu = mLongPressOnHomeBehavior == KEY_ACTION_MENU
+                    || mDoubleTapOnHomeBehavior == KEY_ACTION_MENU;
         }
         if (hasMenu) {
             mPressOnMenuBehavior = Settings.System.getIntForUser(resolver,
@@ -1489,6 +1461,9 @@ public class PhoneWindowManager implements WindowManagerPolicy {
             mLongPressOnMenuBehavior = Settings.System.getIntForUser(resolver,
                     Settings.System.KEY_MENU_LONG_PRESS_ACTION,
                     mLongPressOnMenuBehavior, UserHandle.USER_CURRENT);
+
+            hasPermanentMenu |= mPressOnMenuBehavior == KEY_ACTION_MENU
+                    || mLongPressOnMenuBehavior == KEY_ACTION_MENU;
         }
         if (hasAssist) {
             mPressOnAssistBehavior = Settings.System.getIntForUser(resolver,
@@ -1497,6 +1472,9 @@ public class PhoneWindowManager implements WindowManagerPolicy {
             mLongPressOnAssistBehavior = Settings.System.getIntForUser(resolver,
                     Settings.System.KEY_ASSIST_LONG_PRESS_ACTION,
                     mLongPressOnAssistBehavior, UserHandle.USER_CURRENT);
+
+            hasPermanentMenu |= mPressOnAssistBehavior == KEY_ACTION_MENU
+                    || mLongPressOnAssistBehavior == KEY_ACTION_MENU;
         }
         if (hasAppSwitch) {
             mPressOnAppSwitchBehavior = Settings.System.getIntForUser(resolver,
@@ -1505,7 +1483,12 @@ public class PhoneWindowManager implements WindowManagerPolicy {
             mLongPressOnAppSwitchBehavior = Settings.System.getIntForUser(resolver,
                     Settings.System.KEY_APP_SWITCH_LONG_PRESS_ACTION,
                     mLongPressOnAppSwitchBehavior, UserHandle.USER_CURRENT);
+
+            hasPermanentMenu |= mPressOnAppSwitchBehavior == KEY_ACTION_MENU
+                    || mLongPressOnAppSwitchBehavior == KEY_ACTION_MENU;
         }
+
+        mHasPermanentMenuKey = hasPermanentMenu;
     }
 
     @Override
@@ -1651,8 +1634,6 @@ public class PhoneWindowManager implements WindowManagerPolicy {
                 updateWakeGestureListenerLp();
             }
 
-            updateKeyAssignments();
-
             final boolean useEdgeService = Settings.System.getIntForUser(resolver,
                     Settings.System.USE_EDGE_SERVICE_FOR_GESTURES, 1, UserHandle.USER_CURRENT) == 1;
             if (useEdgeService ^ mUsingEdgeGestureServiceForGestures && mSystemReady) {
@@ -1686,6 +1667,8 @@ public class PhoneWindowManager implements WindowManagerPolicy {
             mNavigationBarWidthForRotation[mLandscapeRotation] =
             mNavigationBarWidthForRotation[mSeascapeRotation] =
                 (mNavigationBarHeight - 6) * DisplayMetrics.DENSITY_DEVICE/DisplayMetrics.DENSITY_DEFAULT;
+
+            updateKeyAssignments();
 
             // Configure rotation lock.
             int userRotation = Settings.System.getIntForUser(resolver,
@@ -2533,9 +2516,12 @@ public class PhoneWindowManager implements WindowManagerPolicy {
 
 
     @Override
-    public Animation createForceHideWallpaperExitAnimation(boolean goingToNotificationShade) {
+    public Animation createForceHideWallpaperExitAnimation(boolean goingToNotificationShade,
+            boolean keyguardShowingMedia) {
         if (goingToNotificationShade) {
             return null;
+        } else if (keyguardShowingMedia) {
+            return AnimationUtils.loadAnimation(mContext, R.anim.lock_screen_wallpaper_exit_noop);
         } else {
             return AnimationUtils.loadAnimation(mContext, R.anim.lock_screen_wallpaper_exit);
         }
@@ -6584,6 +6570,11 @@ public class PhoneWindowManager implements WindowManagerPolicy {
     @Override
     public boolean hasNavigationBar() {
         return mHasNavigationBar || mDevForceNavbar;
+    }
+
+    @Override
+    public boolean hasPermanentMenuKey() {
+        return !hasNavigationBar() && mHasPermanentMenuKey;
     }
 
     public boolean needsNavigationBar() {
