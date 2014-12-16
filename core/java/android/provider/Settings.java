@@ -2255,10 +2255,10 @@ public final class Settings {
         public static final String PHONE_BLACKLIST_PRIVATE_NUMBER_MODE = "phone_blacklist_private_number_enabled";
 
         /**
-         * Whether the blacklisting feature for phone calls from private numbers is enabled
+         * Whether the blacklisting feature for phone calls from unknown numbers is enabled
          * @hide
          */
-        public static final String PHONE_BLACKLIST_UNKNOWN_NUMBER_MODE = "phone_blacklist_private_number_enabled";
+        public static final String PHONE_BLACKLIST_UNKNOWN_NUMBER_MODE = "phone_blacklist_unknown_number_enabled";
 
         /**
          * Constants to be used for {@link PHONE_BLACKLIST_PRIVATE_NUMBER_MODE} and
@@ -6577,13 +6577,6 @@ public final class Settings {
         */
        public static final String WIFI_SCAN_ALWAYS_AVAILABLE =
                 "wifi_scan_always_enabled";
-
-       /**
-        * Setting to allow enable or disable rssi threshold.
-        * @hide
-        */
-       public static final String WIFI_RSSI_THRESHOLD =
-                "wifi_rssi_threshold";
 
        /**
         * Used to save the Wifi_ON state prior to tethering.
