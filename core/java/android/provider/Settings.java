@@ -3234,15 +3234,6 @@ public final class Settings {
          public static final String VOLUME_KEY_CURSOR_CONTROL = "volume_key_cursor_control";
 
         /**
-         * Volume music controls
-         * @hide
-         */
-        public static final String VOLUME_MUSIC_CONTROLS = "volume_music_controls";
-
-        /**
-         * Enable statusbar double tap gesture on to put device to sleep
-
-        /**
          * Whether to prevent loud volume levels when headset is first plugged in.
          * @hide
          */
