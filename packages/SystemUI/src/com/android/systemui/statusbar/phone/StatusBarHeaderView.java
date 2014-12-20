@@ -28,17 +28,13 @@ import android.provider.Settings;
 import android.content.Intent;
 import android.content.res.Configuration;
 import android.content.res.Resources;
-import android.database.ContentObserver;
 import android.graphics.Outline;
 import android.graphics.Rect;
 import android.graphics.drawable.Animatable;
 import android.graphics.drawable.Drawable;
 import android.telephony.TelephonyManager;
-import android.net.Uri;
 import android.provider.AlarmClock;
 import android.provider.CalendarContract;
-import android.os.Handler;
-import android.provider.Settings;
 import android.util.AttributeSet;
 import android.util.MathUtils;
 import android.util.TypedValue;
@@ -141,9 +137,6 @@ public class StatusBarHeaderView extends RelativeLayout implements View.OnClickL
     private float mCurrentT;
     private boolean mShowingDetail;
 
-    private SettingsObserver mSettingsObserver;
-    private boolean mShowWeather;
-
     private int mShowBatteryText;
 
     private ContentObserver mObserver = new ContentObserver(new Handler()) {
@@ -151,6 +144,8 @@ public class StatusBarHeaderView extends RelativeLayout implements View.OnClickL
             loadShowBatteryTextSetting();
         }
     };
+    private SettingsObserver mSettingsObserver;
+    private boolean mShowWeather;
 
     public StatusBarHeaderView(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -480,8 +475,14 @@ public class StatusBarHeaderView extends RelativeLayout implements View.OnClickL
 
     @Override
     public void onWeatherChanged(WeatherController.WeatherInfo info) {
-        mWeatherLine1.setText(mContext.getString(R.string.status_bar_expanded_header_weather_format,
-                info.temp, info.condition));
+        if (info.temp == null || info.condition == null) {
+            mWeatherLine1.setText(null);
+        } else {
+            mWeatherLine1.setText(mContext.getString(
+                    R.string.status_bar_expanded_header_weather_format,
+                    info.temp,
+                    info.condition));
+        }
         mWeatherLine2.setText(info.city);
     }
 
@@ -911,6 +912,22 @@ public class StatusBarHeaderView extends RelativeLayout implements View.OnClickL
         }
     };
 
+    @Override
+    public void onAttachedToWindow() {
+        super.onAttachedToWindow();
+        getContext().getContentResolver().registerContentObserver(Settings.System.getUriFor(
+                "status_bar_show_battery_percent"), false, mObserver);
+    }
+
+    @Override
+    public void onDetachedFromWindow() {
+        super.onDetachedFromWindow();
+
+        if (mBatteryController != null) {
+            mBatteryController.removeStateChangedCallback(this);
+        }
+    }
+
     class SettingsObserver extends ContentObserver {
         SettingsObserver(Handler handler) {
             super(handler);
@@ -945,21 +962,4 @@ public class StatusBarHeaderView extends RelativeLayout implements View.OnClickL
             updateVisibilities();
         }
     }
-
-    @Override
-    public void onAttachedToWindow() {
-        super.onAttachedToWindow();
-        getContext().getContentResolver().registerContentObserver(Settings.System.getUriFor(
-                "status_bar_show_battery_percent"), false, mObserver);
-    }
-
-    @Override
-    public void onDetachedFromWindow() {
-        super.onDetachedFromWindow();
-
-        if (mBatteryController != null) {
-            mBatteryController.removeStateChangedCallback(this);
-        }
-    }
-
 }
