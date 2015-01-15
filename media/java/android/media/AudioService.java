@@ -362,6 +362,8 @@ public class AudioService extends IAudioService.Stub {
             "STREAM_TTS"
     };
 
+    private boolean mLinkNotificationWithVolume;
+
     private final AudioSystem.ErrorCallback mAudioSystemCallback = new AudioSystem.ErrorCallback() {
         public void onError(int error) {
             switch (error) {
@@ -799,6 +801,8 @@ public class AudioService extends IAudioService.Stub {
      * @hide
      */
     public void addMediaPlayerAndUpdateRemoteController (String packageName) {
+        Log.v(TAG, "addMediaPlayerAndUpdateRemoteController: size of existing list: " +
+                                                                mMediaPlayers.size());
         boolean playerToAdd = true;
         if (mMediaPlayers.size() > 0) {
             final Iterator<MediaPlayerInfo> rccIterator = mMediaPlayers.iterator();
@@ -851,6 +855,40 @@ public class AudioService extends IAudioService.Stub {
         } else {
             Log.e(TAG, "No RCC entry present to update");
         }
+    }
+
+    /**
+     * @hide
+     */
+    public void removeMediaPlayerAndUpdateRemoteController (String packageName) {
+        Log.v(TAG, "removeMediaPlayerAndUpdateRemoteController: size of existing list: " +
+                                                                mMediaPlayers.size());
+        boolean playerToRemove = false;
+        int index = -1;
+        if (mMediaPlayers.size() > 0) {
+            final Iterator<MediaPlayerInfo> rccIterator = mMediaPlayers.iterator();
+            while (rccIterator.hasNext()) {
+                index++;
+                final MediaPlayerInfo player = rccIterator.next();
+                if (packageName.equals(player.getPackageName())) {
+                    Log.v(TAG, "Player entry present remove and update RemoteController");
+                    playerToRemove = true;
+                    break;
+                } else {
+                    Log.v(TAG, "Player entry for " + player.getPackageName()+ " is not present");
+                }
+            }
+        }
+        if (playerToRemove) {
+            Log.e(TAG, "Removing Player: " + packageName + " from index" + index);
+            mMediaPlayers.remove(index);
+        }
+        Intent intent = new Intent(AudioManager.RCC_CHANGED_ACTION);
+        intent.putExtra(AudioManager.EXTRA_CALLING_PACKAGE_NAME, packageName);
+        intent.putExtra(AudioManager.EXTRA_FOCUS_CHANGED_VALUE, false);
+        intent.putExtra(AudioManager.EXTRA_AVAILABLITY_CHANGED_VALUE, false);
+        sendBroadcastToAll(intent);
+        Log.v(TAG, "Updated List size: " + mMediaPlayers.size());
     }
 
     private void checkAllAliasStreamVolumes() {
@@ -939,6 +977,13 @@ public class AudioService extends IAudioService.Stub {
         }
 
         mStreamVolumeAlias[AudioSystem.STREAM_DTMF] = dtmfStreamAlias;
+
+        if (mLinkNotificationWithVolume) {
+            mStreamVolumeAlias[AudioSystem.STREAM_NOTIFICATION] = AudioSystem.STREAM_RING;
+        } else {
+            mStreamVolumeAlias[AudioSystem.STREAM_NOTIFICATION] = AudioSystem.STREAM_NOTIFICATION;
+        }
+
         if (updateVolumes) {
             mStreamStates[AudioSystem.STREAM_DTMF].setAllIndexes(mStreamStates[dtmfStreamAlias]);
             // apply stream mute states according to new value of mRingerModeAffectedStreams
@@ -1025,6 +1070,9 @@ public class AudioService extends IAudioService.Stub {
             mVolumeKeysControlMediaStream = Settings.System.getIntForUser(cr,
                     Settings.System.VOLUME_KEYS_CONTROL_MEDIA_STREAM, 0, UserHandle.USER_CURRENT) == 1;
         }
+
+        mLinkNotificationWithVolume = Settings.Secure.getInt(cr,
+                Settings.Secure.VOLUME_LINK_NOTIFICATION, 1) == 1;
 
         mMuteAffectedStreams = System.getIntForUser(cr,
                 System.MUTE_STREAMS_AFFECTED,
@@ -4503,6 +4551,16 @@ public class AudioService extends IAudioService.Stub {
                 } else if (uri.equals(Settings.Global.getUriFor(
                     Settings.Global.DOCK_AUDIO_MEDIA_ENABLED))) {
                     readDockAudioSettings(mContentResolver);
+                }
+
+                readDockAudioSettings(mContentResolver);
+
+                mLinkNotificationWithVolume = Settings.System.getInt(mContentResolver,
+                        Settings.Secure.VOLUME_LINK_NOTIFICATION, 1) == 1;
+                if (mLinkNotificationWithVolume) {
+                    mStreamVolumeAlias[AudioSystem.STREAM_NOTIFICATION] = AudioSystem.STREAM_RING;
+                } else {
+                    mStreamVolumeAlias[AudioSystem.STREAM_NOTIFICATION] = AudioSystem.STREAM_NOTIFICATION;
                 }
             }
         }
