@@ -268,6 +268,7 @@ public class CommandQueue extends IStatusBar.Stub {
             mHandler.removeMessages(MSG_HIDE_HEADS_UP);
             mHandler.sendEmptyMessage(MSG_HIDE_HEADS_UP);
         }
+    }
 
     public void pause() {
         mPaused = true;
