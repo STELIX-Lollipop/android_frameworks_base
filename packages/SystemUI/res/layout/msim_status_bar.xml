@@ -121,7 +121,7 @@
         android:layout_height="match_parent"
         >
 
-        <com.android.systemui.statusbar.policy.ClockCenter
+        <TextView
             android:id="@+id/center_clock"
             android:textAppearance="@style/TextAppearance.StatusBar.Clock"
             android:gravity="center"
