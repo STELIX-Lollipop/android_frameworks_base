@@ -3470,14 +3470,6 @@ public final class Settings {
         public static final String STATUS_BAR_SHOW_WEATHER = "status_bar_show_weather";
 
         /**
-         * Allows to disable weather in locskcreen
-         * 1 = use system default (show)
-         * 0 = hide Weather
-         * @hide
-         */
-        public static final String LOCKSCREEN_WEATHER = "lockscreen_weather";
-
-        /**
           * Volume keys control cursor in text fields (default is 0)
           * 0 - Disabled
           * 1 - Volume up/down moves cursor left/right
