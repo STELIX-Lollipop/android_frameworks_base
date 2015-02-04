@@ -2168,7 +2168,13 @@ public final class Settings {
          */
         public static final String STATUS_BAR_BRIGHTNESS_CONTROL = "status_bar_brightness_control";
 
-       /**
+        /**
+         * Motion sensors trigger doze (pick up gesture or significant motion)
+         * @hide
+         */
+        public static final String DOZE_TRIGGER_MOTION = "doze_trigger_motion";
+
+        /**
          * Timeout for ambient display notification
          * @hide
          */
@@ -2180,7 +2186,7 @@ public final class Settings {
          */
         public static final String STATUS_BAR_IME_SWITCHER = "status_bar_ime_switcher";
 
-         /**
+        /**
          * Whether to show the battery bar
          * @hide
          */
@@ -4899,6 +4905,12 @@ public final class Settings {
         public static final String LOCK_GESTURE_VISIBLE = "lock_gesture_visible_pattern";
 
         /**
+         * Whether the device should doze if configured.
+         * @hide
+         */
+        public static final String DOZE_ENABLED = "doze_enabled";
+
+        /**
          * This preference allows the device to be locked given time after screen goes off,
          * subject to current DeviceAdmin policy limits.
          * @hide
@@ -5892,12 +5904,6 @@ public final class Settings {
          * @hide
          */
         public static final String WAKE_GESTURE_ENABLED = "wake_gesture_enabled";
-
-        /**
-         * Whether the device should doze if configured.
-         * @hide
-         */
-        public static final String DOZE_ENABLED = "doze_enabled";
 
         /**
          * What happens when the user presses the Home button when the
