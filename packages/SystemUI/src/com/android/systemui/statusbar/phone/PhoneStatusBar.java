@@ -166,7 +166,6 @@ import com.android.systemui.statusbar.policy.BluetoothControllerImpl;
 import com.android.systemui.statusbar.policy.BrightnessMirrorController;
 import com.android.systemui.statusbar.policy.CastControllerImpl;
 import com.android.systemui.statusbar.policy.Clock;
-import com.android.systemui.statusbar.policy.FlashlightController;
 import com.android.systemui.statusbar.policy.HeadsUpNotificationView;
 import com.android.systemui.statusbar.policy.HotspotControllerImpl;
 import com.android.systemui.statusbar.policy.KeyButtonView;
@@ -3792,7 +3791,7 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
             showKeyguard();
             // The following views need to be invisible if the keyguard is showing
             // These views were hidden but re-inflating the status bar changed them back to visible
-            mClockView.setVisibility(View.INVISIBLE);
+            mCenterClockLayout.setVisibility(View.INVISIBLE);
             mNotificationIconArea.setVisibility(View.INVISIBLE);
             mSystemIconArea.setVisibility(View.INVISIBLE);
         }
