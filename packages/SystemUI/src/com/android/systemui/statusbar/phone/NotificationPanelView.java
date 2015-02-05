@@ -1268,6 +1268,8 @@ public class NotificationPanelView extends PanelView implements
             showQsOverride = isLayoutRtl() ? (w - region < x) : (x < region);
         }
 
+        showQsOverride = showQsOverride && mStatusBarState == StatusBarState.SHADE;
+
         if (mQsExpanded) {
             return onHeader || (mScrollView.isScrolledToBottom() && yDiff < 0) && isInQsArea(x, y);
         } else {
