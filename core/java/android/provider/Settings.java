@@ -2264,6 +2264,13 @@ public final class Settings {
         public static final String HEADS_UP_SNOOZE_TIME = "heads_up_snooze_time";
 
         /**
+         * Enable/disable Heads up
+         *
+         * @hide
+         */
+        public static final String HEADS_UP_SWITCH = "heads_up_switch";
+
+        /**
          * Defines the global heads up notification decay
          *
          * @hide
