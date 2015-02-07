@@ -1,5 +1,6 @@
 package com.android.internal.policy.impl.keyguard;
 
+import android.Manifest;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -126,7 +127,8 @@ public class KeyguardServiceDelegate {
     private void sendStateChangeBroadcast(boolean bound) {
         Intent i = new Intent(ACTION_STATE_CHANGE);
         i.putExtra(EXTRA_ACTIVE, bound);
-        mScrim.getContext().sendStickyBroadcast(i);
+        mScrim.getContext().sendBroadcastAsUser(i, UserHandle.ALL,
+                Manifest.permission.CONTROL_KEYGUARD);
     }
 
     private final ServiceConnection mKeyguardConnection = new ServiceConnection() {
@@ -140,10 +142,10 @@ public class KeyguardServiceDelegate {
                 mKeyguardService.onSystemReady();
                 // This is used to hide the scrim once keyguard displays.
                 mKeyguardService.onScreenTurnedOn(new KeyguardShowDelegate(null));
-                sendStateChangeBroadcast(true);
             }
             if (mKeyguardState.bootCompleted) {
                 mKeyguardService.onBootCompleted();
+                sendStateChangeBroadcast(true);
             }
         }
 
@@ -267,7 +269,6 @@ public class KeyguardServiceDelegate {
         } else {
             mKeyguardState.systemIsReady = true;
         }
-        sendStateChangeBroadcast(true);
     }
 
     public void doKeyguardTimeout(Bundle options) {
@@ -346,6 +347,7 @@ public class KeyguardServiceDelegate {
     public void onBootCompleted() {
         if (mKeyguardService != null) {
             mKeyguardService.onBootCompleted();
+            sendStateChangeBroadcast(true);
         }
         mKeyguardState.bootCompleted = true;
     }
