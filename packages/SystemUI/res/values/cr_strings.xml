@@ -30,5 +30,6 @@
 
     <!-- Quick Settings -->
     <string name="quick_settings_powermenu_label">Power Menu</string>
+    <string name="quick_settings_sleepscreen_label">Sleep Screen</string>
 
 </resources>
