@@ -17,6 +17,7 @@
 package android.app;
 
 import android.annotation.SdkConstant;
+import android.app.Notification;
 import android.app.Notification.Builder;
 import android.content.ComponentName;
 import android.content.Context;
@@ -284,6 +285,18 @@ public class NotificationManager
         try {
             service.setHeadsUpNotificationsEnabledForPackage(pkg, uid, headsUp);
         } catch (RemoteException e) {
+        }
+    }
+
+    /**
+     * @hide
+     */
+    public int getShowNotificationForPackageOnKeyguard(String pkg, int uid) {
+        INotificationManager service = getService();
+        try {
+            return getService().getShowNotificationForPackageOnKeyguard(pkg, uid);
+        } catch (RemoteException e) {
+            return Notification.SHOW_ALL_NOTI_ON_KEYGUARD;
         }
     }
 
