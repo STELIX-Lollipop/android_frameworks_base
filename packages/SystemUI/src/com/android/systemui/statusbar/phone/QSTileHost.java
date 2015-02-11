@@ -60,7 +60,6 @@ import com.android.systemui.qs.tiles.VisualizerTile;
 import com.android.systemui.qs.tiles.ScreenshotTile;
 import com.android.systemui.qs.tiles.ScreenrecordTile;
 import com.android.systemui.qs.tiles.ScreenTimeoutTile;
-import com.android.systemui.qs.tiles.SleepScreenTile;
 import com.android.systemui.qs.tiles.SyncTile;
 import com.android.systemui.qs.tiles.WifiTile;
 import com.android.systemui.settings.CurrentUserTracker;
@@ -329,8 +328,6 @@ public class QSTileHost implements QSTile.Host {
                 return new ScreenshotTile(this);
             case QSConstants.TILE_SCREENRECORD:
                 return new ScreenrecordTile(this);
-            case QSConstants.TILE_SLEEPSCREEN:
-                return new SleepScreenTile(this);
             case QSConstants.TILE_SYNC:
                 return new SyncTile(this);
             default:
