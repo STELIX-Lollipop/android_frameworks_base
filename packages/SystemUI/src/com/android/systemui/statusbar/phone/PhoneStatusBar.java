@@ -316,6 +316,9 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
     // center clock
     LinearLayout mCenterClockLayout;
 
+    // left clock
+    LinearLayout mLeftClockLayout;
+
     // the icons themselves
     IconMerger mNotificationIcons;
     View mNotificationIconArea;
@@ -970,6 +973,7 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
         mNotificationIcons.setOverflowIndicator(mMoreIcon);
         mStatusBarContents = (LinearLayout)mStatusBarView.findViewById(R.id.status_bar_contents);
         mCenterClockLayout = (LinearLayout)mStatusBarView.findViewById(R.id.center_clock_layout);
+        mLeftClockLayout = (LinearLayout)mStatusBarView.findViewById(R.id.left_clock_layout);
         mStackScroller = (NotificationStackScrollLayout) mStatusBarWindowContent.findViewById(
                 R.id.notification_stack_scroller);
         mStackScroller.setLongPressListener(getNotificationLongClicker());
@@ -2370,6 +2374,7 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
         ContentResolver resolver = mContext.getContentResolver();
         View clock = mStatusBarView.findViewById(R.id.clock);
         View cclock = mStatusBarView.findViewById(R.id.center_clock);
+        View lclock = mStatusBarView.findViewById(R.id.left_clock);
         boolean showClock = (Settings.System.getIntForUser(
                 resolver, Settings.System.STATUS_BAR_CLOCK, 1,
                 UserHandle.USER_CURRENT) == 1);
@@ -2381,6 +2386,9 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
         }
         if (clockLocation == 1 && cclock != null) {
             cclock.setVisibility(show ? (showClock ? View.VISIBLE : View.GONE) : View.GONE);
+        }
+        if (clockLocation == 2 && lclock != null) {
+            lclock.setVisibility(show ? (showClock ? View.VISIBLE : View.GONE) : View.GONE);
         }
     }
 
@@ -2434,12 +2442,15 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
         if ((diff & StatusBarManager.DISABLE_SYSTEM_INFO) != 0) {
             mSystemIconArea.animate().cancel();
             mCenterClockLayout.animate().cancel();
+            mLeftClockLayout.animate().cancel();
             if ((state & StatusBarManager.DISABLE_SYSTEM_INFO) != 0) {
                 animateStatusBarHide(mSystemIconArea, animate);
                 animateStatusBarHide(mCenterClockLayout, animate);
+                animateStatusBarHide(mLeftClockLayout, animate);
             } else {
                 animateStatusBarShow(mSystemIconArea, animate);
                 animateStatusBarShow(mCenterClockLayout, animate);
+                animateStatusBarShow(mLeftClockLayout, animate);
             }
         }
 
@@ -3356,11 +3367,14 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
             mTicking = true;
             mStatusBarContents.setVisibility(View.GONE);
             mCenterClockLayout.setVisibility(View.GONE);
+            mLeftClockLayout.setVisibility(View.GONE);
             mTickerView.setVisibility(View.VISIBLE);
             mTickerView.startAnimation(loadAnim(com.android.internal.R.anim.push_up_in, null));
             mStatusBarContents.startAnimation(
                     loadAnim(com.android.internal.R.anim.push_up_out, null));
             mCenterClockLayout.startAnimation(
+                    loadAnim(com.android.internal.R.anim.push_up_out, null));
+            mLeftClockLayout.startAnimation(
                     loadAnim(com.android.internal.R.anim.push_up_out, null));
         }
 
@@ -3369,10 +3383,13 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
             if (!mTickerEnabled) return;
             mStatusBarContents.setVisibility(View.VISIBLE);
             mCenterClockLayout.setVisibility(View.VISIBLE);
+            mLeftClockLayout.setVisibility(View.VISIBLE);
             mTickerView.setVisibility(View.GONE);
             mStatusBarContents.startAnimation(
                     loadAnim(com.android.internal.R.anim.push_down_in, null));
             mCenterClockLayout.startAnimation(
+                    loadAnim(com.android.internal.R.anim.push_down_in, null));
+            mLeftClockLayout.startAnimation(
                     loadAnim(com.android.internal.R.anim.push_down_in, null));
             mTickerView.startAnimation(loadAnim(com.android.internal.R.anim.push_down_out,
                         mTickingDoneListener));
@@ -3383,9 +3400,12 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
             if (mStatusBarContents.getVisibility() != View.VISIBLE) {
                 mStatusBarContents.setVisibility(View.VISIBLE);
                 mCenterClockLayout.setVisibility(View.VISIBLE);
+                mLeftClockLayout.setVisibility(View.VISIBLE);
                 mStatusBarContents
                         .startAnimation(loadAnim(com.android.internal.R.anim.fade_in, null));
                 mCenterClockLayout
+                        .startAnimation(loadAnim(com.android.internal.R.anim.fade_in, null));
+                mLeftClockLayout
                         .startAnimation(loadAnim(com.android.internal.R.anim.fade_in, null));
             }
             mTickerView.setVisibility(View.GONE);
@@ -3943,6 +3963,7 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
             // The following views need to be invisible if the keyguard is showing
             // These views were hidden but re-inflating the status bar changed them back to visible
             mCenterClockLayout.setVisibility(View.INVISIBLE);
+            mLeftClockLayout.setVisibility(View.INVISIBLE);
             mNotificationIconArea.setVisibility(View.INVISIBLE);
             mSystemIconArea.setVisibility(View.INVISIBLE);
         }
