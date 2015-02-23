@@ -472,7 +472,7 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
                     false, this, UserHandle.USER_ALL);
             resolver.registerContentObserver(Settings.Secure.getUriFor(
                     Settings.Secure.RECENTS_LONG_PRESS_ACTIVITY),
-                    false, this);
+                    false, this, UserHandle.USER_ALL);
             update();
         }
 
