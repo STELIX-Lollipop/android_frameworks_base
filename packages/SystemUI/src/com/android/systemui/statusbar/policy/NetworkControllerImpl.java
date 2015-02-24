@@ -25,10 +25,12 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.AppOpsManager;
 import android.content.BroadcastReceiver;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.res.Resources;
+import android.database.ContentObserver;
 import android.media.RingtoneManager;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
@@ -208,10 +210,13 @@ public class NetworkControllerImpl extends BroadcastReceiver
 
     protected static boolean mAppopsStrictEnabled = false;
 
+    // Whether the direction arrows are enabled by the user
+    boolean mDirectionArrowsEnabled = false;
+
     public interface SignalCluster {
-        void setWifiIndicators(boolean visible, int strengthIcon,
+        void setWifiIndicators(boolean visible, int strengthIcon, int inetCondition,
 		int activityIcon, String contentDescription);
-        void setMobileDataIndicators(boolean visible, int strengthIcon,
+        void setMobileDataIndicators(boolean visible, int strengthIcon, int inetCondition,
 	        int activityIcon, int typeIcon, String contentDescription,
 		String typeContentDescription, boolean roaming,
                 boolean isTypeIconWide, int noSimIcon);
@@ -221,12 +226,40 @@ public class NetworkControllerImpl extends BroadcastReceiver
     private final WifiAccessPointController mAccessPoints;
     private final MobileDataController mMobileDataController;
 
+    private final class SettingsObserver extends ContentObserver {
+        SettingsObserver(Handler handler) {
+            super(handler);
+        }
+
+        void observe() {
+            ContentResolver resolver = mContext.getContentResolver();
+            resolver.registerContentObserver(Settings.System.getUriFor(
+                    Settings.System.STATUS_BAR_SHOW_NETWORK_ACTIVITY),
+                    false, this, UserHandle.USER_ALL);
+            mDirectionArrowsEnabled = Settings.System.getIntForUser(resolver,
+                    Settings.System.STATUS_BAR_SHOW_NETWORK_ACTIVITY,
+                    1, UserHandle.USER_CURRENT) == 1 ? true : false;
+        }
+
+        @Override
+        public void onChange(boolean selfChange) {
+            mDirectionArrowsEnabled = Settings.System.getIntForUser(mContext.getContentResolver(),
+                    Settings.System.STATUS_BAR_SHOW_NETWORK_ACTIVITY,
+                    1, UserHandle.USER_CURRENT) == 1 ? true : false;
+            refreshViews();
+        }
+    }
+
     /**
      * Construct this controller object and register for updates.
      */
     public NetworkControllerImpl(Context context) {
         mContext = context;
         final Resources res = context.getResources();
+
+        // Register settings observer and set initial preferences
+        SettingsObserver settingsObserver = new SettingsObserver(new Handler());
+        settingsObserver.observe();
 
         TelephonyIcons.initAll(context);
         ConnectivityManager cm = (ConnectivityManager)mContext.getSystemService(
@@ -483,6 +516,7 @@ public class NetworkControllerImpl extends BroadcastReceiver
                 // only show wifi in the cluster if connected or if wifi-only
                 mWifiEnabled && (mWifiConnected || !mHasMobileDataFeature || mAppopsStrictEnabled),
                 mWifiIconId,
+                mInetCondition,
                 mWifiActivityIconId,
                 mContentDescriptionWifi);
 
@@ -491,6 +525,7 @@ public class NetworkControllerImpl extends BroadcastReceiver
             cluster.setMobileDataIndicators(
                     true,
                     mAlwaysShowCdmaRssi ? mPhoneSignalIconId : mWimaxIconId,
+                    mInetCondition,
                     mMobileActivityIconId,
                     mDataTypeIconId,
                     mContentDescriptionWimax,
@@ -503,6 +538,7 @@ public class NetworkControllerImpl extends BroadcastReceiver
             cluster.setMobileDataIndicators(
                     mHasMobileDataFeature,
                     mShowPhoneRSSIForData ? mPhoneSignalIconId : mDataSignalIconId,
+                    mInetCondition,
                     mMobileActivityIconId,
                     mDataTypeIconId,
                     mContentDescriptionPhoneSignal,
@@ -1402,10 +1438,31 @@ public class NetworkControllerImpl extends BroadcastReceiver
             // Now for things that should only be shown when actually using mobile data.
             if (mDataConnected) {
                 combinedSignalIconId = mDataSignalIconId;
+                if (mDirectionArrowsEnabled) {
+                    switch (mDataActivity) {
+                        case TelephonyManager.DATA_ACTIVITY_IN:
+                            mMobileActivityIconId = R.drawable.stat_sys_signal_in;
+                            break;
+                        case TelephonyManager.DATA_ACTIVITY_OUT:
+                            mMobileActivityIconId = R.drawable.stat_sys_signal_out;
+                            break;
+                        case TelephonyManager.DATA_ACTIVITY_INOUT:
+                            mMobileActivityIconId = R.drawable.stat_sys_signal_inout;
+                            break;
+                        default:
+                            mMobileActivityIconId = R.drawable.stat_sys_signal_none;
+                            break;
+                    }
+                } else {
+                    mMobileActivityIconId = 0;
+                }
 
                 combinedLabel = mobileLabel;
+                combinedActivityIconId = mMobileActivityIconId;
                 combinedSignalIconId = mDataSignalIconId; // set by updateDataIcon()
                 mContentDescriptionCombinedSignal = mContentDescriptionDataType;
+            } else {
+                mMobileActivityIconId = 0;
             }
         }
 
@@ -1418,19 +1475,23 @@ public class NetworkControllerImpl extends BroadcastReceiver
                 if (DEBUG) {
                     wifiLabel += "xxxxXXXXxxxxXXXX";
                 }
-                switch (mWifiActivity) {
-                case WifiManager.DATA_ACTIVITY_IN:
-                    mWifiActivityIconId = R.drawable.stat_sys_signal_in;
-                    break;
-                case WifiManager.DATA_ACTIVITY_OUT:
-                    mWifiActivityIconId = R.drawable.stat_sys_signal_out;
-                    break;
-                case WifiManager.DATA_ACTIVITY_INOUT:
-                    mWifiActivityIconId = R.drawable.stat_sys_signal_inout;
-                    break;
-                case WifiManager.DATA_ACTIVITY_NONE:
-                    mWifiActivityIconId = R.drawable.stat_sys_signal_none;
-                    break;
+                if (mDirectionArrowsEnabled) {
+                    switch (mWifiActivity) {
+                        case WifiManager.DATA_ACTIVITY_IN:
+                            mWifiActivityIconId = R.drawable.stat_sys_signal_in;
+                            break;
+                        case WifiManager.DATA_ACTIVITY_OUT:
+                            mWifiActivityIconId = R.drawable.stat_sys_signal_out;
+                            break;
+                        case WifiManager.DATA_ACTIVITY_INOUT:
+                            mWifiActivityIconId = R.drawable.stat_sys_signal_inout;
+                            break;
+                        case WifiManager.DATA_ACTIVITY_NONE:
+                            mWifiActivityIconId = R.drawable.stat_sys_signal_none;
+                            break;
+                    }
+                } else {
+                    mWifiActivityIconId = 0;
                 }
             }
 
@@ -1990,6 +2051,7 @@ public class NetworkControllerImpl extends BroadcastReceiver
                     cluster.setWifiIndicators(
                             show,
                             iconId,
+                            mInetCondition,
                             mDemoWifiActivityId,
                             "Demo");
                 }
@@ -2033,6 +2095,7 @@ public class NetworkControllerImpl extends BroadcastReceiver
                     cluster.setMobileDataIndicators(
                             show,
                             iconId,
+                            mInetCondition,
                             mDemoMobileActivityId,
                             mDemoDataTypeIconId,
                             "Demo",
