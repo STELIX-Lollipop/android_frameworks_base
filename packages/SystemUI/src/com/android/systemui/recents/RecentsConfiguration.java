@@ -66,8 +66,8 @@ public class RecentsConfiguration {
     /** Search bar */
     int searchBarAppWidgetId = -1;
     boolean searchBarAppEnabled;
-    public int searchBarSpaceHeightPx;
     private Context mContext;
+    public static int searchBarSpaceHeightPx;
 
     /** Task stack */
     public int taskStackScrollDuration;
@@ -203,7 +203,6 @@ public class RecentsConfiguration {
         maxNumTasksToLoad = ActivityManager.getMaxRecentTasksStatic();
 
         // Search Bar
-        searchBarSpaceHeightPx = res.getDimensionPixelSize(R.dimen.recents_search_bar_space_height);
         searchBarAppWidgetId = settings.getInt(Constants.Values.App.Key_SearchAppWidgetId, -1);
 
         // Task stack
@@ -374,8 +373,6 @@ public class RecentsConfiguration {
     public void getSearchBarBounds(int windowWidth, int windowHeight, int topInset,
                                    Rect searchBarSpaceBounds) {
         // Return empty rects if search is not enabled and Search bar is disabled
-        searchBarAppEnabled = Settings.System.getInt(mContext.getContentResolver(),
-                Settings.System.RECENTS_SHOW_HIDE_SEARCH_BAR, 0) == 1;
         int searchBarSize = searchBarSpaceHeightPx;
         if (!searchBarAppEnabled) {
             searchBarSize = 0;
