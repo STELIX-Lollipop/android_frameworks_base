@@ -65,9 +65,10 @@ public class RecentsConfiguration {
 
     /** Search bar */
     int searchBarAppWidgetId = -1;
+
     boolean searchBarAppEnabled;
     private Context mContext;
-    public static int searchBarSpaceHeightPx;
+    public int searchBarSpaceHeightPx;
 
     /** Task stack */
     public int taskStackScrollDuration;
@@ -203,6 +204,7 @@ public class RecentsConfiguration {
         maxNumTasksToLoad = ActivityManager.getMaxRecentTasksStatic();
 
         // Search Bar
+        searchBarSpaceHeightPx = res.getDimensionPixelSize(R.dimen.recents_search_bar_space_height);
         searchBarAppWidgetId = settings.getInt(Constants.Values.App.Key_SearchAppWidgetId, -1);
 
         // Task stack
