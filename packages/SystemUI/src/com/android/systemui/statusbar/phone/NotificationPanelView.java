@@ -26,6 +26,8 @@ import android.content.Context;
 import android.content.res.Configuration;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
+import android.graphics.PorterDuff.Mode;
+import android.net.Uri;
 import android.os.Handler;
 import android.os.PowerManager;
 import android.os.UserHandle;
@@ -190,6 +192,8 @@ public class NotificationPanelView extends PanelView implements
     private int mStatusBarHeaderHeight;
     private GestureDetector mDoubleTapGesture;
 
+    private int mQSBackgroundColor;
+
     public NotificationPanelView(Context context, AttributeSet attrs) {
         super(context, attrs);
         mSettingsObserver = new SettingsObserver(mHandler);
@@ -262,6 +266,7 @@ public class NotificationPanelView extends PanelView implements
                 }
             }
         });
+        setQSBackgroundColor();
     }
 
     @Override
@@ -1987,6 +1992,12 @@ public class NotificationPanelView extends PanelView implements
                     Settings.Secure.STATUS_BAR_LOCKED_ON_SECURE_KEYGUARD),
                     false, this, UserHandle.USER_ALL);
             resolver.registerContentObserver(Settings.System.getUriFor(
+                    Settings.System.QS_BACKGROUND_COLOR), false, this);
+            resolver.registerContentObserver(Settings.System.getUriFor(
+                    Settings.System.QS_ICON_COLOR), false, this);
+            resolver.registerContentObserver(Settings.System.getUriFor(
+                    Settings.System.QS_TEXT_COLOR), false, this);
+            resolver.registerContentObserver(Settings.System.getUriFor(
                     Settings.System.QS_SMART_PULLDOWN),
                     false, this, UserHandle.USER_ALL);
             update();
@@ -1999,6 +2010,21 @@ public class NotificationPanelView extends PanelView implements
         }
 
         @Override
+        public void onChange(boolean selfChange, Uri uri) {
+            ContentResolver resolver = mContext.getContentResolver();
+            if (uri.equals(Settings.System.getUriFor(
+                    Settings.System.QS_BACKGROUND_COLOR))) {
+                mQSBackgroundColor = Settings.System.getInt(
+                        resolver, Settings.System.QS_BACKGROUND_COLOR, 0xff263238);
+                setQSBackgroundColor();
+            } else if (uri.equals(Settings.System.getUriFor(
+                    Settings.System.QS_ICON_COLOR))
+                || uri.equals(Settings.System.getUriFor(
+                    Settings.System.QS_TEXT_COLOR))) {
+                setQSColors();
+            }
+        }
+
         public void update() {
             ContentResolver resolver = mContext.getContentResolver();
             mOneFingerQuickSettingsIntercept = Settings.System.getIntForUser(resolver,
@@ -2011,6 +2037,29 @@ public class NotificationPanelView extends PanelView implements
             mQsSmartPullDown = Settings.System.getIntForUser(
                     resolver, Settings.System.QS_SMART_PULLDOWN, 0,
                     UserHandle.USER_CURRENT);
+            mQSBackgroundColor = Settings.System.getInt(
+                    resolver, Settings.System.QS_BACKGROUND_COLOR, 0xff263238);
+            setQSBackgroundColor();
+            setQSColors();
+        }
+    }
+
+    private void setQSBackgroundColor() {
+        ContentResolver resolver = mContext.getContentResolver();
+        mQSBackgroundColor = Settings.System.getInt(
+                resolver, Settings.System.QS_BACKGROUND_COLOR, 0xff263238);
+        if (mQsContainer != null) {
+            mQsContainer.getBackground().setColorFilter(
+                    mQSBackgroundColor, Mode.MULTIPLY);
+        }
+        if (mQsPanel != null) {
+            mQsPanel.setDetailBackgroundColor(mQSBackgroundColor);
+        }
+    }
+
+    private void setQSColors() {
+        if (mQsPanel != null) {
+            mQsPanel.setColors();
         }
     }
 }
