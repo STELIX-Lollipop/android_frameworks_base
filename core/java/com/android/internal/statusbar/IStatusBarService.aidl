@@ -65,4 +65,5 @@ interface IStatusBarService
     void scheduleHeadsUpClose();
     void toggleLastApp();
     void toggleKillApp();
+    void toggleScreenshot();
 }
