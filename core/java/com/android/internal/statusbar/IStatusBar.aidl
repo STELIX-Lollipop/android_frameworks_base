@@ -47,5 +47,7 @@ oneway interface IStatusBar
     void showCustomIntentAfterKeyguard(inout Intent intent);
     void hideHeadsUpCandidate(String packageName);
     void scheduleHeadsUpClose();
+    void toggleLastApp();
+    void toggleKillApp();
 }
 
