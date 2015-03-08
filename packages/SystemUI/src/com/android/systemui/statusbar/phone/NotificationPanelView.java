@@ -26,7 +26,6 @@ import android.content.Context;
 import android.content.res.Configuration;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
-import android.net.Uri;
 import android.os.Handler;
 import android.os.PowerManager;
 import android.os.UserHandle;
@@ -219,6 +218,16 @@ public class NotificationPanelView extends PanelView implements
         mKeyguardStatusView = (KeyguardStatusView) findViewById(R.id.keyguard_status_view);
         mQsContainer = findViewById(R.id.quick_settings_container);
         mQsPanel = (QSPanel) findViewById(R.id.quick_settings_panel);
+        mQsPanel.setDetailCallback(new QSPanel.DetailCallback() {
+            @Override
+            public void onDetailChanged(boolean showing) {
+                mQsPanel.setTopOfContainer(mQsContainer.getTop());
+                mQsPanel.setDetailOffset(mScrollView.getScrollY());
+                if (!showing) {
+                    mHandler.removeCallbacks(mCloseQsRunnable);
+                }
+            }
+        });
         mClockView = (TextView) findViewById(R.id.clock_view);
         mScrollView = (ObservableScrollView) findViewById(R.id.scroll_view);
         mScrollView.setListener(this);
@@ -592,6 +601,9 @@ public class NotificationPanelView extends PanelView implements
     }
 
     private boolean flingExpandsQs(float vel) {
+        if (isQsDetailShowing() && mStatusBarState == StatusBarState.SHADE) {
+            return false;
+        }
         if (isBelowFalsingThreshold()) {
             return false;
         }
@@ -721,6 +733,9 @@ public class NotificationPanelView extends PanelView implements
         // If we are already running a QS expansion, make sure that we keep the panel open.
         if (mQsExpansionAnimator != null) {
             expands = true;
+        }
+        if (isQsDetailShowing()) {
+            expands = false;
         }
         return expands;
     }
@@ -992,6 +1007,7 @@ public class NotificationPanelView extends PanelView implements
     private void setKeyguardBottomAreaVisibility(int statusBarState,
             boolean goingToFullShade) {
         if (goingToFullShade) {
+            mKeyguardBottomArea.requestVisualizer(false, 0);
             mKeyguardBottomArea.animate().cancel();
             mKeyguardBottomArea.animate()
                     .alpha(0f)
@@ -1030,6 +1046,7 @@ public class NotificationPanelView extends PanelView implements
                         .setDuration(mStatusBar.getKeyguardFadingAwayDuration()/2)
                         .start();
             }
+            mKeyguardBottomArea.requestVisualizer(false, 0);
         } else if (mStatusBarState == StatusBarState.SHADE_LOCKED
                 && statusBarState == StatusBarState.KEYGUARD) {
             mKeyguardStatusView.animate().cancel();
@@ -1042,6 +1059,7 @@ public class NotificationPanelView extends PanelView implements
                     .setDuration(320)
                     .setInterpolator(PhoneStatusBar.ALPHA_IN)
                     .withEndAction(mAnimateKeyguardStatusViewVisibleEndRunnable);
+            mKeyguardBottomArea.requestVisualizer(true, 320);
         } else if (statusBarState == StatusBarState.KEYGUARD) {
             mKeyguardStatusView.animate().cancel();
             mKeyguardStatusViewAnimating = false;
@@ -1509,7 +1527,6 @@ public class NotificationPanelView extends PanelView implements
 
     private void setListening(boolean listening) {
         mHeader.setListening(listening);
-        mKeyguardStatusBar.setListening(listening);
         mQsPanel.setListening(listening);
     }
 
@@ -1584,9 +1601,30 @@ public class NotificationPanelView extends PanelView implements
     public void onReset(ExpandableView view) {
     }
 
+    private Runnable mCloseQsRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (isQsDetailShowing()
+                    && !mTracking
+                    && (!mQsTracking || mStatusBarState == StatusBarState.KEYGUARD)
+                    && !mIntercepting
+                    && mQsExpansionAnimator == null) {
+                if (mStatusBarState == StatusBarState.SHADE) {
+                    closeQsDetail();
+                }
+                animateCloseQs();
+            }
+        }
+    };
+
     @Override
     public void onScrollChanged() {
+        mQsPanel.setDetailOffset(mScrollView.getScrollY());
         if (mQsExpanded) {
+            if (isQsDetailShowing()) {
+                mHandler.removeCallbacks(mCloseQsRunnable);
+                mHandler.postDelayed(mCloseQsRunnable, 200);
+            }
             requestScrollerTopPaddingUpdate(false /* animate */);
             requestPanelHeightUpdate();
         }
@@ -1690,6 +1728,13 @@ public class NotificationPanelView extends PanelView implements
         mSecureCameraLaunchManager.onSwipingStarted();
         requestDisallowInterceptTouchEvent(true);
         mOnlyAffordanceInThisMotion = true;
+    }
+
+    @Override
+    public void onSwipingAnimationFinished(boolean snappingBack) {
+        if (snappingBack) {
+            mKeyguardBottomArea.requestVisualizer(true, 300);
+        }
     }
 
     @Override
@@ -1807,6 +1852,9 @@ public class NotificationPanelView extends PanelView implements
     }
 
     public void setEmptyDragAmount(float amount) {
+        if (amount == 0 && mStatusBarState == StatusBarState.KEYGUARD) {
+            mKeyguardBottomArea.requestVisualizer(true, 300);
+        }
         float factor = 0.8f;
         if (mNotificationStackScroller.getNotGoneChildCount() > 0) {
             factor = 0.4f;
