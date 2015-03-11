@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 The CyanogenMod Project
+ * Copyright (C) 2015 The CyanogenMod Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,18 +14,18 @@
  * limitations under the License.
  */
 
-package com.android.systemui.statusbar.policy;
+package com.android.internal.util.cm;
 
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
-import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.database.ContentObserver;
+import android.content.pm.PackageManager;
+import android.content.res.Resources;
 import android.database.Cursor;
+import android.graphics.drawable.Drawable;
 import android.net.Uri;
-import android.os.Handler;
 import android.provider.Settings;
 import android.util.Log;
 
@@ -54,6 +54,7 @@ public class WeatherControllerImpl implements WeatherController {
             "condition"
     };
 
+    public static final String LOCK_CLOCK_PACKAGE_NAME = "com.cyanogenmod.lockclock";
     private static final int WEATHER_ICON_MONOCHROME = 0;
     private static final int WEATHER_ICON_COLORED = 1;
 
