@@ -3672,7 +3672,7 @@ public final class Settings {
         * @hide
         */
        public static final String NETWORK_TRAFFIC_AUTOHIDE_THRESHOLD = "network_traffic_autohide_threshold";
-	   
+
 	   /**
          * Config for advanced power menu
          *
@@ -3980,6 +3980,18 @@ public final class Settings {
          * @hide
          */
         public static final String STATUS_BAR_SHOW_NETWORK_ACTIVITY = "status_bar_show_network_activity";
+
+        /**
+         * Whether to show the weather info on the lock screen
+         * @hide
+         */
+        public static final String LOCK_SCREEN_SHOW_WEATHER = "lock_screen_show_weather";
+
+        /**
+         * Whether to show the weather location lock screen
+         * @hide
+         */
+        public static final String LOCK_SCREEN_SHOW_WEATHER_LOCATION = "lock_screen_show_weather_location";
 
         /**
          * Settings to backup. This is here so that it's in the same place as the settings
