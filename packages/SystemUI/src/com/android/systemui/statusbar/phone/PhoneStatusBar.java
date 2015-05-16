@@ -383,6 +383,10 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
     // Status bar carrier
     private boolean mShowStatusBarCarrier;
 
+    // battery
+    private BatteryMeterView mBatteryView;
+    private BatteryLevelTextView mBatteryLevel;
+
     // position
     int[] mPositionTmp = new int[2];
     boolean mExpandedVisible;
@@ -499,6 +503,12 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
             resolver.registerContentObserver(Settings.System.getUriFor(
                     Settings.System.APP_SIDEBAR_POSITION),
                     false, this, UserHandle.USER_ALL);
+            resolver.registerContentObserver(Settings.System.getUriFor(
+                    Settings.System.STATUS_BAR_BATTERY_STATUS_TEXT_COLOR),
+                    false, this, UserHandle.USER_ALL);
+            resolver.registerContentObserver(Settings.System.getUriFor(
+                    Settings.System.STATUS_BAR_SHOW_TICKER),
+                    false, this, UserHandle.USER_ALL);
             update();
         }
 
@@ -521,6 +531,17 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
             } else if (uri.equals(Settings.System.getUriFor(
                     Settings.System.PIE_CONTROLS))) {
                     attachPieContainer(isPieEnabled());
+            } else if (uri.equals(Settings.System.getUriFor(
+                    Settings.System.STATUS_BAR_BATTERY_STATUS_TEXT_COLOR))) {
+                updateBatteryLevelTextColor();
+            } else if (uri.equals(Settings.System.getUriFor(
+                    Settings.System.STATUS_BAR_SHOW_TICKER))) {
+                mTickerEnabled = Settings.System.getIntForUser(
+                        mContext.getContentResolver(),
+                        Settings.System.STATUS_BAR_SHOW_TICKER,
+                        mContext.getResources().getBoolean(R.bool.enable_ticker)
+                        ? 1 : 0, UserHandle.USER_CURRENT) == 1;
+                initTickerView();
             }
             update();
         }
@@ -1011,6 +1032,9 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
             lclock.setPhoneStatusBar(this);
         }
 
+        mBatteryView = (BatteryMeterView) mStatusBarView.findViewById(R.id.battery);
+        mBatteryLevel = (BatteryLevelTextView) mStatusBarView.findViewById(R.id.battery_level_text);
+
         mStackScroller = (NotificationStackScrollLayout) mStatusBarWindowContent.findViewById(
                 R.id.notification_stack_scroller);
         mStackScroller.setLongPressListener(getNotificationLongClicker());
@@ -1066,18 +1090,11 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
                 (KeyguardIndicationTextView) mStatusBarWindowContent.findViewById(
                         R.id.keyguard_indication_text));
         mKeyguardBottomArea.setKeyguardIndicationController(mKeyguardIndicationController);
-
-        mTickerEnabled = res.getBoolean(R.bool.enable_ticker);
-        if (mTickerEnabled) {
-            final ViewStub tickerStub = (ViewStub) mStatusBarView.findViewById(R.id.ticker_stub);
-            if (tickerStub != null) {
-                mTickerView = tickerStub.inflate();
-                mTicker = new MyTicker(context, mStatusBarView);
-
-                TickerView tickerView = (TickerView) mStatusBarView.findViewById(R.id.tickerText);
-                tickerView.mTicker = mTicker;
-            }
-        }
+        mTickerEnabled = Settings.System.getIntForUser(mContext.getContentResolver(),
+                    Settings.System.STATUS_BAR_SHOW_TICKER,
+                    mContext.getResources().getBoolean(R.bool.enable_ticker)
+                            ? 1 : 0, UserHandle.USER_CURRENT) == 1;
+        initTickerView();
 
         mEdgeBorder = res.getDimensionPixelSize(R.dimen.status_bar_edge_ignore);
 
@@ -1093,7 +1110,7 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
             mLocationController = new LocationControllerImpl(mContext); // will post a notification
         }
         if (mBatteryController == null) {
-            mBatteryController = new BatteryController(mContext, mHandler);
+            mBatteryController = new BatteryController(mContext);
             mBatteryController.addStateChangedCallback(new BatteryStateChangeCallback() {
                 @Override
                 public void onPowerSaveChanged() {
@@ -1105,11 +1122,6 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
 
                 @Override
                 public void onBatteryLevelChanged(int level, boolean pluggedIn, boolean charging) {
-                    // noop
-                }
-
-                @Override
-                public void onBatteryStyleChanged(int style, int percentMode) {
                     // noop
                 }
             });
@@ -1290,10 +1302,8 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
         mUserInfoController.reloadUserInfo();
 
         mHeader.setBatteryController(mBatteryController);
-        ((BatteryMeterView) mStatusBarView.findViewById(R.id.battery)).setBatteryController(
-                mBatteryController);
-        ((BatteryLevelTextView) mStatusBarView.findViewById(R.id.battery_level_text))
-                .setBatteryController(mBatteryController);
+        mBatteryView.setBatteryController(mBatteryController);
+        mBatteryLevel.setBatteryController(mBatteryController);
         mKeyguardStatusBar.setBatteryController(mBatteryController);
         mHeader.setNextAlarmController(mNextAlarmController);
         mHeader.setWeatherController(mWeatherController);
@@ -1303,6 +1313,7 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
                 new Intent(pm.isScreenOn() ? Intent.ACTION_SCREEN_ON : Intent.ACTION_SCREEN_OFF));
 
         startGlyphRasterizeHack();
+        updateBatteryLevelTextColor();
         setKeyguardTextAndIconColors();
         return mStatusBarView;
     }
@@ -1420,6 +1431,21 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
 
     public StatusBarWindowView getStatusBarWindow() {
         return mStatusBarWindow;
+    }
+
+    private void initTickerView() {
+        if (mTickerEnabled && (mTicker == null || mTickerView == null)) {
+            final ViewStub tickerStub = (ViewStub) mStatusBarView.findViewById(R.id.ticker_stub);
+            if (tickerStub != null) {
+                mTickerView = tickerStub.inflate();
+                mTicker = new MyTicker(mContext, mStatusBarView);
+
+                TickerView tickerView = (TickerView) mStatusBarView.findViewById(R.id.tickerText);
+                tickerView.mTicker = mTicker;
+            } else {
+                mTickerEnabled = false;
+            }
+        }
     }
 
     @Override
@@ -2395,6 +2421,12 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
                             .start();
                 }
             }
+        }
+    }
+
+    private void updateBatteryLevelTextColor() {
+        if (mBatteryLevel != null) {
+            mBatteryLevel.setTextColor(false);
         }
     }
 
@@ -3947,9 +3979,6 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
         if (mMSimNetworkController != null) {
             mMSimNetworkController.setUserId(mCurrentUserId);
         }
-        if (mBatteryController != null) {
-            mBatteryController.setUserId(mCurrentUserId);
-        }
     }
 
     private void resetUserSetupObserver() {
@@ -4771,7 +4800,8 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
     }
 
     private void showBouncer() {
-        if (mState == StatusBarState.KEYGUARD || mState == StatusBarState.SHADE_LOCKED) {
+        if (!mRecreating &&
+                (mState == StatusBarState.KEYGUARD || mState == StatusBarState.SHADE_LOCKED)) {
             mWaitingForKeyguardExit = mStatusBarKeyguardViewManager.isShowing();
             mStatusBarKeyguardViewManager.dismiss();
         }
