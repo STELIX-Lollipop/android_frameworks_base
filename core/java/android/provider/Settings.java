@@ -2365,6 +2365,13 @@ public final class Settings {
         public static final String QS_COLOR_SWITCH = "qs_color_switch";
 
         /**
+         * Quick Settings Smart Pulldown
+         *
+         * @hide
+         */
+        public static final String QS_SMART_PULLDOWN = "qs_smart_pulldown";
+
+        /**
          * Wether to show the ticker on the status bar
          * @hide
          */
@@ -3120,6 +3127,12 @@ public final class Settings {
         public static final String BATTERY_LIGHT_FULL_COLOR = "battery_light_full_color";
 
         /**
+         * What color to use for the battery LED while charging - really full (100%)
+         * @hide
+         */
+        public static final String BATTERY_LIGHT_REALLY_FULL_COLOR = "battery_light_really_full_color";
+
+        /**
          * Sprint MWI Quirk: Show message wait indicator notifications
          * @hide
          */
@@ -3762,6 +3775,12 @@ public final class Settings {
         public static final String STATUS_BAR_AIRPLANE_MODE_ICON_COLOR = "status_bar_airplane_mode_icon_color";
 
         /**
+         * Color of the vpn icon on statusbar
+         * @hide
+         */
+        public static final String STATUS_BAR_VPN_ICON_COLOR = "status_bar_vpn_icon_color";
+
+        /**
          * Boolean value on whether to show weather in the statusbar
          * @hide
          */
@@ -3784,6 +3803,12 @@ public final class Settings {
          * @hide
          */
         public static final String STATUS_BAR_EXPANDED_HEADER_ICON_COLOR = "status_bar_expanded_header_icon_color";
+
+        /**
+         * Color of the expanded status bar header background
+         * @hide
+         */
+        public static final String STATUS_BAR_EXPANDED_HEADER_BG_COLOR = "status_bar_expanded_header_bg_color";
 
         /**
          * Show the pending notification counts as overlays on the status bar
@@ -3844,6 +3869,18 @@ public final class Settings {
          * @hide
          */
         public static final String VOICE_WAKEUP = "voice_wakeup";
+
+		/**
+         * Heads Up background color
+         * @hide
+         */
+        public static final String HEADS_UP_BG_COLOR = "heads_up_bg_color";
+
+        /**
+         * Heads Up text color
+         * @hide
+         */
+        public static final String HEADS_UP_TEXT_COLOR = "heads_up_text_color";
 
         /**
          * An intent (a flattened Uri String) to launch when user voice launch
@@ -4304,6 +4341,12 @@ public final class Settings {
         public static final String LOCK_SCREEN_ICON_COLOR = "lock_screen_icon_color";
 
         /**
+         * Color of the clear all icon in the notification drawer
+         * @hide
+         */
+        public static final String NOTIFICATION_DRAWER_CLEAR_ALL_ICON_COLOR = "nd_clear_all_icon_color";
+
+        /**
          * Whether the notification light will be allowed when in zen mode during downtime
          * @hide
          */
@@ -4474,6 +4517,15 @@ public final class Settings {
          * @hide
          */
         public static final String STATUSBAR_COMPONENT = "statusbar_component";
+
+        /**
+         * Status bar power menu
+         * 0 - disabled (default)
+         * 1 - screen off / power menu
+         * 2 - power menu - screen off
+         * @hide
+         */
+        public static final String STATUS_BAR_POWER_MENU = "status_bar_power_menu";
 
         /**
          * Settings to backup. This is here so that it's in the same place as the settings

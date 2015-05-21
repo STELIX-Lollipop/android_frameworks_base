@@ -20,11 +20,11 @@ import android.app.ActivityManager;
 import android.app.ActivityManager.MemoryInfo;
 import android.app.ActivityOptions;
 import android.app.TaskStackBuilder;
-import android.content.ComponentName;
 import android.content.Context;
 import android.content.ContentResolver;
 import android.content.res.Resources;
 import android.content.Intent;
+import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Rect;
@@ -80,8 +80,8 @@ public class RecentsView extends FrameLayout implements TaskStackView.TaskStackV
     ArrayList<TaskStack> mStacks;
     View mSearchBar;
     RecentsViewCallbacks mCb;
-    View mFloatingButton;
     View mClearRecents;
+    View mFloatingButton;
     TextView mMemText;
     ProgressBar mMemBar;
 
@@ -278,8 +278,8 @@ public class RecentsView extends FrameLayout implements TaskStackView.TaskStackV
     }
 
     public void startHideClearRecentsButtonAnimation() {
-        if (mClearRecents != null) {
-            mClearRecents.animate()
+        if (mFloatingButton != null) {
+            mFloatingButton.animate()
                 .alpha(0f)
                 .setStartDelay(0)
                 .setUpdateListener(null)
@@ -288,8 +288,8 @@ public class RecentsView extends FrameLayout implements TaskStackView.TaskStackV
                 .withEndAction(new Runnable() {
                     @Override
                     public void run() {
-                        mClearRecents.setVisibility(View.GONE);
-                        mClearRecents.setAlpha(1f);
+                        mFloatingButton.setVisibility(View.GONE);
+                        mFloatingButton.setAlpha(1f);
                     }
                 })
                 .start();
@@ -336,8 +336,8 @@ public class RecentsView extends FrameLayout implements TaskStackView.TaskStackV
         int height = MeasureSpec.getSize(heightMeasureSpec);
 
         // Get the search bar bounds and measure the search bar layout
-        Rect searchBarSpaceBounds = new Rect();
         if (mSearchBar != null) {
+            Rect searchBarSpaceBounds = new Rect();
             mConfig.getSearchBarBounds(width, height, mConfig.systemInsets.top, searchBarSpaceBounds);
             mSearchBar.measure(
                     MeasureSpec.makeMeasureSpec(searchBarSpaceBounds.width(), MeasureSpec.EXACTLY),
@@ -359,10 +359,17 @@ public class RecentsView extends FrameLayout implements TaskStackView.TaskStackV
         mConfig.getTaskStackBounds(width, height, mConfig.systemInsets.top,
                 mConfig.systemInsets.right, taskStackBounds);
 
+        if (mClearRecents != null) {
+            FrameLayout.LayoutParams params = (FrameLayout.LayoutParams)
+                    mClearRecents.getLayoutParams();
+            params.topMargin = taskStackBounds.top;
+            params.rightMargin = width - taskStackBounds.right;
+            mClearRecents.setLayoutParams(params);
+        }
+
         // Measure each TaskStackView with the full width and height of the window since the
         // transition view is a child of that stack view
         int childCount = getChildCount();
-        int taskViewWidth = 0;
         for (int i = 0; i < childCount; i++) {
             View child = getChildAt(i);
             if (child != mSearchBar && child.getVisibility() != GONE) {
@@ -370,14 +377,6 @@ public class RecentsView extends FrameLayout implements TaskStackView.TaskStackV
                 // Set the insets to be the top/left inset + search bounds
                 tsv.setStackInsetRect(taskStackBounds);
                 tsv.measure(widthMeasureSpec, heightMeasureSpec);
-
-                // Retrieve the max width of the task views
-                int taskViewChildCount = tsv.getChildCount();
-                for (int j = 0; j < taskViewChildCount; j++) {
-                    View taskViewChild = tsv.getChildAt(j);
-                    taskViewWidth = Math.max(taskViewChild.getMeasuredWidth(), taskViewWidth);
-                }
-
             }
         }
 
@@ -386,14 +385,16 @@ public class RecentsView extends FrameLayout implements TaskStackView.TaskStackV
                     Settings.System.RECENTS_CLEAR_ALL_LOCATION, Constants.DebugFlags.App.RECENTS_CLEAR_ALL_BOTTOM_RIGHT);
             FrameLayout.LayoutParams params = (FrameLayout.LayoutParams)
                     mFloatingButton.getLayoutParams();
-            params.topMargin = taskStackBounds.top;
-            if (mSearchBar != null && (searchBarSpaceBounds.width() > taskViewWidth)) {
-                // Adjust to the search bar
-                params.rightMargin = width - searchBarSpaceBounds.right;
+            boolean isLandscape = mContext.getResources().getConfiguration().orientation
+                == Configuration.ORIENTATION_LANDSCAPE;
+            if (mSearchBar == null || isLandscape) {
+                params.topMargin = mContext.getResources().
+                    getDimensionPixelSize(com.android.internal.R.dimen.status_bar_height);
             } else {
-                // Adjust to task views
-                params.rightMargin = (width / 2) - (taskViewWidth / 2);
+                params.topMargin = mContext.getResources().
+                    getDimensionPixelSize(com.android.internal.R.dimen.status_bar_height);
             }
+
             switch (clearRecentsLocation) {
                 case Constants.DebugFlags.App.RECENTS_CLEAR_ALL_TOP_LEFT:
                     params.gravity = Gravity.TOP | Gravity.LEFT;
@@ -404,12 +405,12 @@ public class RecentsView extends FrameLayout implements TaskStackView.TaskStackV
                 case Constants.DebugFlags.App.RECENTS_CLEAR_ALL_TOP_CENTER:
                     params.gravity = Gravity.TOP | Gravity.CENTER;
                     break;
+                case Constants.DebugFlags.App.RECENTS_CLEAR_ALL_BOTTOM_LEFT:
+                    params.gravity = Gravity.BOTTOM | Gravity.LEFT;
+                    break;
                 case Constants.DebugFlags.App.RECENTS_CLEAR_ALL_BOTTOM_RIGHT:
                 default:
                     params.gravity = Gravity.BOTTOM | Gravity.RIGHT;
-                    break;
-                case Constants.DebugFlags.App.RECENTS_CLEAR_ALL_BOTTOM_LEFT:
-                    params.gravity = Gravity.BOTTOM | Gravity.LEFT;
                     break;
                 case Constants.DebugFlags.App.RECENTS_CLEAR_ALL_BOTTOM_CENTER:
                     params.gravity = Gravity.BOTTOM | Gravity.CENTER;
@@ -489,21 +490,7 @@ public class RecentsView extends FrameLayout implements TaskStackView.TaskStackV
                 }
 
                 if (dismissAll()) {
-                    // Hide clear recents before dismiss all tasks
-                    mFloatingButton.animate()
-                        .alpha(0f)
-                        .setStartDelay(0)
-                        .setUpdateListener(null)
-                        .setInterpolator(mConfig.fastOutSlowInInterpolator)
-                        .setDuration(mConfig.taskViewRemoveAnimDuration)
-                        .withEndAction(new Runnable() {
-                            @Override
-                            public void run() {
-                                mFloatingButton.setVisibility(View.GONE);
-                                mFloatingButton.setAlpha(1f);
-                            }
-                        })
-                        .start();
+                    startHideClearRecentsButtonAnimation();
                 }
 
                 dismissAllTasksAnimated();

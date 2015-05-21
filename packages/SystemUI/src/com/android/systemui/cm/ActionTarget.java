@@ -21,6 +21,7 @@ import android.app.ActivityManager;
 import android.app.KeyguardManager;
 import android.content.ActivityNotFoundException;
 import android.content.ComponentName;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
@@ -39,12 +40,15 @@ import android.os.ServiceManager;
 import android.os.SystemClock;
 import android.os.UserHandle;
 import android.os.Vibrator;
+import android.provider.Settings;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.InputDevice;
+import android.view.IWindowManager;
 import android.view.KeyCharacterMap;
 import android.view.KeyEvent;
 import android.view.WindowManagerGlobal;
+import android.view.WindowManagerPolicyControl;
 import android.widget.Toast;
 
 import com.android.internal.statusbar.IStatusBarService;
@@ -80,6 +84,10 @@ public class ActionTarget {
     }
 
     public boolean launchAction(String action, Bundle opts) {
+
+        final IWindowManager windowManagerService = IWindowManager.Stub.asInterface(
+                    ServiceManager.getService(Context.WINDOW_SERVICE));
+
         if (TextUtils.isEmpty(action) || action.equals(ACTION_NONE)) {
             return false;
         } else if (action.equals(ACTION_RECENTS)) {
@@ -152,6 +160,29 @@ public class ActionTarget {
         } else if (action.equals(ACTION_TORCH)) {
             TorchManager torchManager = (TorchManager) mContext.getSystemService(Context.TORCH_SERVICE);
             torchManager.toggleTorch();
+            return true;
+        } else if (action.equals(ACTION_POWER_MENU)) {
+            try {
+                windowManagerService.toggleGlobalMenu();
+            } catch (RemoteException e) {
+            }
+            return true;
+        } else if (action.equals(ACTION_LAST_APP)){
+            try {
+                dismissKeyguard();
+                getStatusBarService().toggleLastApp();
+            } catch (RemoteException e) {
+                // Do nothing here
+            }
+            return true;
+        } else if (action.equals(ACTION_EXPANDED_DESKTOP)){
+            ContentResolver cr = mContext.getContentResolver();
+            String value = Settings.Global.getString(cr, Settings.Global.POLICY_CONTROL);
+            boolean isExpanded = "immersive.full=*".equals(value);
+            Settings.Global.putString(cr, Settings.Global.POLICY_CONTROL,
+                    isExpanded ? "" : "immersive.full=*");
+            if (isExpanded)
+                WindowManagerPolicyControl.reloadFromSetting(mContext);
             return true;
         } else {
             try {

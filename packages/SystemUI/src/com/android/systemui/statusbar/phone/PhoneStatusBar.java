@@ -275,6 +275,8 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
     /** Allow some time inbetween the long press for back and recents. */
     private static final int LOCK_TO_APP_GESTURE_TOLERENCE = 200;
 
+    private final int HEADSUP_DEFAULT_BACKGROUNDCOLOR = 0x00ffffff;
+
     PhoneStatusBarPolicy mIconPolicy;
 
     // These are no longer handled by the policy, because we need custom strategies for them
@@ -314,6 +316,7 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
     private DozeServiceHost mDozeServiceHost;
     private boolean mScreenOnComingFromTouch;
     private PointF mScreenOnTouchLocation;
+    private boolean mQSCSwitch;
 
     int mPixelFormat;
     Object mQueueLock = new Object();
@@ -382,6 +385,10 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
 
     // Status bar carrier
     private boolean mShowStatusBarCarrier;
+
+    // Heads Up Custom Colors
+    private int mHeadsUpCustomBg;
+    private int mHeadsUpCustomText;
 
     // battery
     private BatteryMeterView mBatteryView;
@@ -509,6 +516,15 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
             resolver.registerContentObserver(Settings.System.getUriFor(
                     Settings.System.STATUS_BAR_SHOW_TICKER),
                     false, this, UserHandle.USER_ALL);
+            resolver.registerContentObserver(Settings.System.getUriFor(
+                    Settings.System.HEADS_UP_BG_COLOR),
+                    false, this, UserHandle.USER_ALL);
+            resolver.registerContentObserver(Settings.System.getUriFor(
+                    Settings.System.HEADS_UP_TEXT_COLOR),
+                    false, this, UserHandle.USER_ALL);
+            resolver.registerContentObserver(Settings.System.getUriFor(
+                    Settings.System.NOTIFICATION_DRAWER_CLEAR_ALL_ICON_COLOR),
+                    false, this, UserHandle.USER_ALL);
             update();
         }
 
@@ -542,6 +558,32 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
                         mContext.getResources().getBoolean(R.bool.enable_ticker)
                         ? 1 : 0, UserHandle.USER_CURRENT) == 1;
                 initTickerView();
+            } else if (uri.equals(Settings.System.getUriFor(
+                    Settings.System.QS_COLOR_SWITCH))) {
+                    mQSCSwitch = Settings.System.getIntForUser(
+                            mContext.getContentResolver(),
+                            Settings.System.QS_COLOR_SWITCH,
+                            0, UserHandle.USER_CURRENT) == 1;
+                    recreateStatusBar();
+                    updateRowStates();
+                    updateSpeedbump();
+                    updateClearAll();
+                    updateEmptyShadeView();
+            } else if (uri.equals(Settings.System.getUriFor(
+                    Settings.System.NOTIFICATION_DRAWER_CLEAR_ALL_ICON_COLOR))) {
+                UpdateNotifDrawerClearAllIconColor();
+            } else if (uri.equals(Settings.System.getUriFor(
+                    Settings.System.HEADS_UP_BG_COLOR))) {
+                    mHeadsUpCustomBg = Settings.System.getIntForUser(
+                        mContext.getContentResolver(),
+                        Settings.System.HEADS_UP_BG_COLOR, HEADSUP_DEFAULT_BACKGROUNDCOLOR,
+                        UserHandle.USER_CURRENT);
+            } else if (uri.equals(Settings.System.getUriFor(
+                    Settings.System.HEADS_UP_TEXT_COLOR))) {
+                    mHeadsUpCustomText = Settings.System.getIntForUser(
+                        mContext.getContentResolver(),
+                        Settings.System.HEADS_UP_TEXT_COLOR, 0x00000000,
+                        UserHandle.USER_CURRENT);
             }
             update();
         }
@@ -570,6 +612,9 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
 
             mHeadsUpTouchOutside = Settings.System.getInt(
                     resolver, Settings.System.HEADS_UP_TOUCH_OUTSIDE, 0) == 1;
+
+            mQSCSwitch = Settings.System.getIntForUser(resolver,
+                    Settings.System.QS_COLOR_SWITCH, 0, mCurrentUserId) == 1;
 
             int sidebarPosition = Settings.System.getInt(
                     resolver, Settings.System.APP_SIDEBAR_POSITION, AppSidebar.SIDEBAR_POSITION_LEFT);
@@ -947,12 +992,10 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
             mNotificationPanel.setBackground(new FastColorDrawable(context.getResources().getColor(
                     R.color.notification_panel_solid_background)));
         }
+
         if (ENABLE_HEADS_UP) {
             mHeadsUpNotificationView =
                     (HeadsUpNotificationView) View.inflate(context, R.layout.heads_up, null);
-            mHeadsUpNotificationView.setVisibility(View.GONE);
-            mHeadsUpNotificationView.setBar(this);
-
             mHeadsUpNotificationView.setVisibility(View.GONE);
             mHeadsUpNotificationView.setBar(this);
             mHeadsUpNotificationDecay = Settings.System.getIntForUser(
@@ -961,6 +1004,7 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
                     res.getInteger(R.integer.heads_up_notification_decay),
                     UserHandle.USER_CURRENT);
         }
+
         if (MULTIUSER_DEBUG) {
             mNotificationPanelDebugText = (TextView) mNotificationPanel.findViewById(
                     R.id.header_debug_info);
@@ -1001,8 +1045,7 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
             }
         });
 
-        if (mRecreating) {
-        } else {
+        if (!mRecreating) {
             addAppCircleSidebar();
             addGestureAnywhereView();
         }
@@ -1315,6 +1358,7 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
         startGlyphRasterizeHack();
         updateBatteryLevelTextColor();
         setKeyguardTextAndIconColors();
+        UpdateNotifDrawerClearAllIconColor();
         return mStatusBarView;
     }
 
@@ -1737,9 +1781,22 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
             if (DEBUG) Log.d(TAG, "launching notification in heads up mode");
             Entry interruptionCandidate = new Entry(notification, null);
             ViewGroup holder = mHeadsUpNotificationView.getHolder();
-            if (inflateViewsForHeadsUp(interruptionCandidate, holder)) {
+
+            // get text color value
+            int mHeadsUpCustomTextColor = Settings.System.getIntForUser(
+                mContext.getContentResolver(), Settings.System.HEADS_UP_TEXT_COLOR,
+                0x00000000, UserHandle.USER_CURRENT);
+
+            if (inflateViews(interruptionCandidate, holder, true, mHeadsUpCustomTextColor)) {
+
+                // get background value
+                int mHeadsUpCustomBg = Settings.System.getIntForUser(
+                    mContext.getContentResolver(), Settings.System.HEADS_UP_BG_COLOR,
+                    HEADSUP_DEFAULT_BACKGROUNDCOLOR, UserHandle.USER_CURRENT);
+
                 // 1. Populate mHeadsUpNotificationView
-                mHeadsUpNotificationView.showNotification(interruptionCandidate);
+                mHeadsUpNotificationView.showNotification(interruptionCandidate,
+                    mHeadsUpCustomBg);
 
                 // do not show the notification in the shade, yet.
                 return;
@@ -2135,6 +2192,14 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
         }
     }
 
+    protected boolean hasActiveVisibleNotifications() {
+        return mNotificationData.hasActiveVisibleNotifications();
+    }
+
+    protected boolean hasActiveClearableNotifications() {
+        return mNotificationData.hasActiveClearableNotifications();
+    }
+
     @Override
     protected void setAreThereNotifications() {
 
@@ -2466,6 +2531,15 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
         }
         mClockLocation = mode;
         mShowClock = enabled;
+    }
+
+    private void UpdateNotifDrawerClearAllIconColor() {
+        int color = Settings.System.getIntForUser(mContext.getContentResolver(),
+                Settings.System.NOTIFICATION_DRAWER_CLEAR_ALL_ICON_COLOR,
+                0xffffffff, mCurrentUserId);
+        if (mDismissView != null) {
+            mDismissView.updateIconColor(color);
+        }
     }
 
     private int adjustDisableFlags(int state) {
